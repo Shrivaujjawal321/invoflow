@@ -1,0 +1,104 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+model User {
+  id              String    @id @default(cuid())
+  email           String    @unique
+  password        String
+  name            String
+  businessName    String?
+  businessLogoUrl String?
+  phone           String?
+  address         String?
+  taxId           String?
+  currency        String    @default("USD")
+  plan            String    @default("free")
+  invoiceCounter  Int       @default(0)
+  createdAt       DateTime  @default(now())
+  clients         Client[]
+  invoices        Invoice[]
+}
+
+model Client {
+  id        String    @id @default(cuid())
+  userId    String
+  user      User      @relation(fields: [userId], references: [id])
+  name      String
+  email     String
+  phone     String?
+  company   String?
+  address   String?
+  notes     String?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  invoices  Invoice[]
+}
+
+model Invoice {
+  id             String        @id @default(cuid())
+  userId         String
+  user           User          @relation(fields: [userId], references: [id])
+  clientId       String
+  client         Client        @relation(fields: [clientId], references: [id])
+  number         String        @unique
+  status         String        @default("draft")
+  issueDate      DateTime      @default(now())
+  dueDate        DateTime
+  subtotal       Float
+  taxRate        Float         @default(0)
+  tax            Float         @default(0)
+  total          Float
+  currency       String        @default("USD")
+  notes          String?
+  terms          String?
+  paymentLink    String?
+  pdfUrl         String?
+  reminderCount  Int           @default(0)
+  lastRemindedAt DateTime?
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+  items          InvoiceItem[]
+  payments       Payment[]
+}
+
+model InvoiceItem {
+  id          String  @id @default(cuid())
+  invoiceId   String
+  invoice     Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  description String
+  quantity    Float
+  rate        Float
+  amount      Float
+}
+
+model Payment {
+  id               String   @id @default(cuid())
+  invoiceId        String
+  invoice          Invoice  @relation(fields: [invoiceId], references: [id])
+  amount           Float
+  gateway          String   @default("manual")
+  gatewayPaymentId String?
+  method           String   @default("bank_transfer")
+  reference        String?
+  status           String   @default("completed")
+  paidAt           DateTime @default(now())
+  createdAt        DateTime @default(now())
+}
+
+model RecurringInvoice {
+  id          String   @id @default(cuid())
+  userId      String
+  clientId    String
+  frequency   String   @default("monthly") // weekly, monthly, quarterly
+  nextDate    DateTime
+  active      Boolean  @default(true)
+  templateData String  // JSON: { items, notes, terms, taxRate, currency }
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
